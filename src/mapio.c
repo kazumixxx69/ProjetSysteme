@@ -91,7 +91,63 @@ void map_save (char *filename)
 void map_load (char *filename)
 {
   // TODO
-  exit_with_error ("Map load is not yet implemented\n");
+ // exit_with_error ("Map load is not yet implemented\n");
+    int fd = open("../maps/saved.map", O_RONLY, S_IREAD);
+    char* buffer;
+    
+    read(fd, buffer, sizeof(int));//largeur
+    int width = atoi(buffer);
+    read(fd, buffer, sizeof(char)); flush(buffer);//lecture du séparateur \n
+    read(fd, buffer, sizeof(int));//hauteur
+    int height = atoi(buffer);
+    read(fd, buffer, sizeof(char)); flush(buffer);// \n
+    read(fd, buffer, sizeof(int));//nombre d'objets
+    int nbObjects = atoi(buffer);
+    read(fd, buffer, sizeof(char)); flush(buffer);// \n
+    
+    int matrixObjects[width][height];
+    for(int i = 0; i<width(); i++){
+	  for(int j=0; j<height(); j++){
+		read(fd, buffer, sizeof(int)); //on renvoie le int du type de l'objet
+		matrixObjects[i][j] = buffer;
+        read(fd, buffer, sizeof(char)); flush(buffer);// séparateur ' '
+	  }
+	  read(fd, buffer, sizeof(char)); flush(buffer);// \n
+    }
+    
+    //caractéristiques des types d'objet (nom/chemin, nbsprites, propriétés)
+    char[NB_TYPES] *nbNames;
+    int[NB_TYPES] nbSprites;
+    char[NB_TYPES] *nbSolidity;
+    int[NB_TYPES] nbDesructible;
+    int[NB_TYPES] nbCollectible;
+    int[NB_TYPES] nbGenerator;
+    
+    for(int i = 0; i<NB_TYPES; i++){
+        for(int j = 0; i<6; j++){
+            while(!strchr(' ', *buffer)){
+                read(fd, buff, sizeof(char));
+            }
+            switch(i){
+                case 0:
+                    nbNames[i] = buffer; break;
+                case 1:
+                    nbSprites[i] = buffer; break;
+                case 2:
+                    nbSolidity[i] = buffer; break;
+                case 3:
+                    nbDestructible[i] = buffer; break;
+                case 4:
+                    nbCollectible[i] = buffer; break;
+                case 5:
+                    nbGenerator[i] = buffer; break;
+            }
+            read(fd, buffer, sizeof(char)); flush(buffer);//séparateur //enlever read ?
+        }
+        read(fd, buffer, sizeof(char)); flush(buffer);// \n //enlever read ?
+    }
+    
+    close(fd);
 }
 
 #endif
