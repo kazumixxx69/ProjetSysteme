@@ -49,8 +49,9 @@ void map_save (char *filename)
 {
   // TODO
   //fprintf (stderr, "Sorry: Map save is not yet implemented\n");
+  map_new(map_width(), map_height());
 
-  //changer les séparateurs ?
+  //changer (ou supprimer) les séparateurs ?
   int fd = open("../maps/saved.map", O_WRONLY | O_CREAT, S_IWRITE);
   write(fd, map_width(), sizeof(int)); //écrit la largeur
   write(fd, '\n', sizeof(char));//séparateur
@@ -92,7 +93,8 @@ void map_load (char *filename)
 {
   // TODO
  // exit_with_error ("Map load is not yet implemented\n");
-    int fd = open("../maps/saved.map", O_RONLY, S_IREAD);
+	
+    int fd = open("../maps/saved.map", O_RDONLY, S_IREAD);
     char* buffer;
     
     read(fd, buffer, sizeof(int));//largeur
@@ -101,6 +103,9 @@ void map_load (char *filename)
     read(fd, buffer, sizeof(int));//hauteur
     int height = atoi(buffer);
     read(fd, buffer, sizeof(char)); flush(buffer);// \n
+	
+    map_new(map_width(), map_height());
+	
     read(fd, buffer, sizeof(int));//nombre d'objets
     int nbObjects = atoi(buffer);
     read(fd, buffer, sizeof(char)); flush(buffer);// \n
@@ -124,11 +129,11 @@ void map_load (char *filename)
     int[NB_TYPES] nbGenerator;
     
     for(int i = 0; i<NB_TYPES; i++){
-        for(int j = 0; i<6; j++){
+        for(int j = 0; j<6; j++){
             while(!strchr(' ', *buffer)){
                 read(fd, buff, sizeof(char));
             }
-            switch(i){
+            switch(j){
                 case 0:
                     nbNames[i] = buffer; break;
                 case 1:
