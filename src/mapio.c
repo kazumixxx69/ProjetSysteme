@@ -51,23 +51,17 @@ void map_save (char *filename)
   //fprintf (stderr, "Sorry: Map save is not yet implemented\n");
   map_new(map_width(), map_height());
 
-  //changer (ou supprimer) les séparateurs ?
   int fd = open("../maps/saved.map", O_WRONLY | O_CREAT, S_IWRITE);
   write(fd, map_width(), sizeof(int)); //écrit la largeur
-  write(fd, '\n', sizeof(char));//séparateur
   write(fd, map_height(), sizeof(int)); //écrit la hauteur
-  write(fd, '\n', sizeof(char));//séparateur
   write(fd, map_objects(), sizeof(int)); //écrit le nombre d'objets qu'elle contient
-  write(fd, '\n', sizeof(char));//séparateur
   
   for(int i = 0; i<map_width(); i++){
 	for(int j=0; j<map_height(); j++){
 		write(fd, map_get(i, j), sizeof(int)); //on renvoie le int du type de l'objet
-		write(fd, ' ', sizeof(char));
 	}
-	write(fd, '\n', sizeof(char));
   }
-  //write(fd, '\n', sizeof(char));//séparateur
+
   //tableaux temp en attendant de trouver mieux
   char[NB_TYPES] *nbNames = {"images/ground.png", "images/wall.png", "images/grass.png", "images/marble.png", "images/herb.png", "images/floor.png", "images/flower.png", "images/coin.png"};
   int[NB_TYPES] nbSprites = {1, 1, 1, 1, 1, 1, 1, 20};
@@ -82,7 +76,6 @@ void map_save (char *filename)
 	//caractéristiques de chaque type : nom/chemin, nombre de sprites, propriétés
 	*tmp = nbNames[i] + itoa(nbSprites[i]) + nbSolidity[i] + itoa(nbDestructible[i]) + itoa(nbCollectible[i]) + itoa(nbGenerator[i]); //concaténer mieux
 	write(fd, tmp, strlen(tmp));
-	write(fd, '\n', sizeof(char));//séparateur
   }
 
   close(fd);
@@ -99,25 +92,20 @@ void map_load (char *filename)
     
     read(fd, buffer, sizeof(int));//largeur
     int width = atoi(buffer);
-    read(fd, buffer, sizeof(char)); flush(buffer);//lecture du séparateur \n
     read(fd, buffer, sizeof(int));//hauteur
     int height = atoi(buffer);
-    read(fd, buffer, sizeof(char)); flush(buffer);// \n
 	
-    map_new(map_width(), map_height());
+    map_new(width, height);
 	
     read(fd, buffer, sizeof(int));//nombre d'objets
     int nbObjects = atoi(buffer);
-    read(fd, buffer, sizeof(char)); flush(buffer);// \n
     
     int matrixObjects[width][height];
     for(int i = 0; i<width(); i++){
 	  for(int j=0; j<height(); j++){
 		read(fd, buffer, sizeof(int)); //on renvoie le int du type de l'objet
 		matrixObjects[i][j] = buffer;
-        read(fd, buffer, sizeof(char)); flush(buffer);// séparateur ' '
 	  }
-	  read(fd, buffer, sizeof(char)); flush(buffer);// \n
     }
     
     //caractéristiques des types d'objet (nom/chemin, nbsprites, propriétés)
@@ -130,8 +118,8 @@ void map_load (char *filename)
     
     for(int i = 0; i<NB_TYPES; i++){
         for(int j = 0; j<6; j++){
-            while(!strchr(' ', *buffer)){
-                read(fd, buff, sizeof(char));
+            while(!strchr(' ', *buffer)){//sans séparateur, nécessité d'une autre condition ?
+                read(fd, buff, sizeof(char));//lseek pour chercher la valeur voulue ?
             }
             switch(j){
                 case 0:
@@ -147,9 +135,7 @@ void map_load (char *filename)
                 case 5:
                     nbGenerator[i] = buffer; break;
             }
-            read(fd, buffer, sizeof(char)); flush(buffer);//séparateur //enlever read ?
         }
-        read(fd, buffer, sizeof(char)); flush(buffer);// \n //enlever read ?
     }
     
     close(fd);
