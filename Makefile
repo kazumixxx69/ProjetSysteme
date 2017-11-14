@@ -53,4 +53,4 @@ endif
 
 .PHONY: clean
 clean: 
-	rm -f game obj/*.o deps/*.d lib/*.a
+	rm -f game obj/*.o deps/*.d
