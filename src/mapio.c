@@ -50,22 +50,54 @@ void map_save (char *filename)
   // TODO
   //fprintf (stderr, "Sorry: Map save is not yet implemented\n");
   
-	int fd = open("maps/saved.map", O_WRONLY | O_CREAT, S_IWRITE);
+	int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IWRITE); //nom de la sauvegarde pris en argument
+	
+	// TO DO Cas d'erreur lors de l'ouverture du file descriptor
+	
+	
+	//Ecriture des paramètres de bases
 	write(fd, map_width(), sizeof(int)); //largeur
 	write(fd, map_height(), sizeof(int)); //hauteur
-	write(fd, map_objects(), sizeof(int));
+	write(fd, map_objects(), sizeof(int)); //nb d'objets chargés en mémoire
 
+	//Ecriture des objets chargés (avant la matrice de la map -> plus compliqué d'y accéder par la suite mais plus facile d'y ajouter des cases)
+	char* obj_name;
+	int obj_name_length; //compteur
+	
+	for(int obj_id=0; obj_id<map_objects(); obj_id++){
+		
+		obj_name = map_get_name(obj_id);
+		obj_name_length = 0;
+		//on cherche la taille du tableau de caractères contenant le chemin d'accès
+		while((*obj_name)!=NULL){ //accès direct, FONCTIONNE???
+			obj_name_length++;
+			obj_name++; //décalage du pointeur, FONCTIONNE???
+		}
+		write(fd, obj_name_length, sizeof(int)); //taille du chemin vers le fichier, sert pour le load avec lseek
+		write(fd, map_get_name(obj_id), obj_name_length * sizeof(char)); //chemin du fichier, FONCTIONNE???
+		
+		write(fd, map_get_frames(obj_id), sizeof(int));
+		write(fd, map_get_solidity(obj_id), sizeof(int));
+		write(fd, map_is_destructible(obj_id), sizeof(int));
+		write(fd, map_is_collectible(obj_id), sizeof(int));
+		write(fd, map_is_generator(obj_id), sizeof(int));		
+	}
+	
+	//Ecriture des blocs présents (matrice)
 	for(int i=0; i<map_width(); i++){
 		for(int j=0; j<map_height(); j++){
 			if(map_get(i,j) != -1){
+				//coordonnees objet
 				write(fd, i, sizeof(int));
 				write(fd, j, sizeof(int));
+				//id objet
 				write(fd, map_get(i,j), sizeof(int));
 			}
 		}
 	}
 	
-	//stocker propriétés sous forme de int/bool
+	close(fd);
+
 }
 
 void map_load (char *filename)
