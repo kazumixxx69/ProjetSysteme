@@ -61,18 +61,10 @@ void map_save (char *filename)
 	write(fd, map_objects(), sizeof(int)); //nb d'objets chargés en mémoire
 
 	//Ecriture des objets chargés (avant la matrice de la map -> plus compliqué d'y accéder par la suite mais plus facile d'y ajouter des cases)
-	char* obj_name;
-	int obj_name_length; //compteur
-	
+
+	int obj_name_length;	
 	for(int obj_id=0; obj_id<map_objects(); obj_id++){
-		
-		obj_name = map_get_name(obj_id);
-		obj_name_length = 0;
-		//on cherche la taille du tableau de caractères contenant le chemin d'accès
-		while((*obj_name)!=NULL){ //accès direct, FONCTIONNE???
-			obj_name_length++;
-			obj_name++; //décalage du pointeur, FONCTIONNE???
-		}
+		obj_name_length = strlen(map_get_name(obj_id));
 		write(fd, obj_name_length, sizeof(int)); //taille du chemin vers le fichier, sert pour le load avec lseek
 		write(fd, map_get_name(obj_id), obj_name_length * sizeof(char)); //chemin du fichier, FONCTIONNE???
 		
