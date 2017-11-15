@@ -50,40 +50,49 @@ void map_save (char *filename)
   // TODO
   //fprintf (stderr, "Sorry: Map save is not yet implemented\n");
   
-	int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IWRITE); //nom de la sauvegarde pris en argument
+	int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0666); //nom de la sauvegarde pris en argument
 	
 	// TO DO Cas d'erreur lors de l'ouverture du file descriptor
 	
+	int buf;
 	
 	//Ecriture des paramètres de bases
-	write(fd, map_width(), sizeof(int)); //largeur
-	write(fd, map_height(), sizeof(int)); //hauteur
-	write(fd, map_objects(), sizeof(int)); //nb d'objets chargés en mémoire
+	buf = map_width();
+	write(fd, &buf, sizeof(int)); //largeur
+	buf = map_height();
+	write(fd, &buf, sizeof(int)); //hauteur
+	buf = map_objects();
+	write(fd, &buf, sizeof(int)); //nb d'objets chargés en mémoire
 
 	//Ecriture des objets chargés (avant la matrice de la map -> plus compliqué d'y accéder par la suite mais plus facile d'y ajouter des cases)
-
 	int obj_name_length;	
 	for(int obj_id=0; obj_id<map_objects(); obj_id++){
-		obj_name_length = strlen(map_get_name(obj_id));
-		write(fd, obj_name_length, sizeof(int)); //taille du chemin vers le fichier, sert pour le load avec lseek
+	  obj_name_length = (int) strlen(map_get_name(obj_id));
+		write(fd, &obj_name_length, sizeof(int)); //taille du chemin vers le fichier, sert pour le load avec lseek
 		write(fd, map_get_name(obj_id), obj_name_length * sizeof(char)); //chemin du fichier, FONCTIONNE???
-		
-		write(fd, map_get_frames(obj_id), sizeof(int));
-		write(fd, map_get_solidity(obj_id), sizeof(int));
-		write(fd, map_is_destructible(obj_id), sizeof(int));
-		write(fd, map_is_collectible(obj_id), sizeof(int));
-		write(fd, map_is_generator(obj_id), sizeof(int));		
+
+		buf = map_get_frames(obj_id);
+		write(fd, &buf, sizeof(int));
+		buf = map_get_solidity(obj_id);
+		write(fd, &buf, sizeof(int));
+		buf = map_is_destructible(obj_id);
+		write(fd, &buf, sizeof(int));
+		buf = map_is_collectible(obj_id);
+		write(fd, &buf, sizeof(int));
+		buf = map_is_generator(obj_id);
+		write(fd, &buf, sizeof(int));		
 	}
 	
 	//Ecriture des blocs présents (matrice)
-	for(int i=0; i<map_width(); i++){
-		for(int j=0; j<map_height(); j++){
-			if(map_get(i,j) != -1){
+	for(int x=0; x<map_width(); x++){
+		for(int y=0; y<map_height(); y++){
+		  if(map_get(x,y) != -1){
 				//coordonnees objet
-				write(fd, i, sizeof(int));
-				write(fd, j, sizeof(int));
+				write(fd, &x, sizeof(int));
+				write(fd, &y, sizeof(int));
 				//id objet
-				write(fd, map_get(i,j), sizeof(int));
+				buf = map_get(x,y);
+				write(fd, &buf, sizeof(int));
 			}
 		}
 	}
@@ -97,8 +106,10 @@ void map_load (char *filename)
   // TODO
  // exit_with_error ("Map load is not yet implemented\n");
 	
-	int fd = open("maps/saved.map", O_RDONLY, S_IREAD);
-	char* buffer;
+	int fd = open(filename, O_RDONLY);
+	//TO DO Cas d'erreur
+	
+	char* buffer = NULL;
 
 	read(fd, buffer, sizeof(int));
 	int width = atoi(buffer);
