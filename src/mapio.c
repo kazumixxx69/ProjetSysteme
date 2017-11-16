@@ -122,9 +122,10 @@ void map_save (char *filename)
 		}
 	}
 
-        //Fermeture du fichier
-	close(fd);
 
+  //Fermeture du fichier
+	close(fd);
+  
 }
 
 void map_load (char *filename)
@@ -354,9 +355,8 @@ void map_load (char *filename)
 		map_set(x, y, obj);
 	}
 
-        close(fd);
 
-	//caractéristiques
+  close(fd);
 }
 
 #endif
