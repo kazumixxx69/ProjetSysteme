@@ -155,7 +155,6 @@ void map_load (char *filename)
         map_object_begin(nb_objects);
 
         int obj_name_length;
-        char* obj_name = NULL;
         int obj_frames;
         int obj_solidity;
         int obj_is_destructible;
@@ -169,9 +168,6 @@ void map_load (char *filename)
            obj_name_length = buffer;
            char buffer_name[obj_name_length];
            read(fd, &buffer_name, obj_name_length * sizeof(char));
-           fprintf(stderr, "erreur, %s\n", buffer_name);
-           strcpy(obj_name, buffer_name);
-           fprintf(stderr, "erreur\n");
            read(fd, &buffer, sizeof(int));
            obj_frames = buffer;
            read(fd, &buffer, sizeof(int));
@@ -188,35 +184,35 @@ void map_load (char *filename)
               case MAP_OBJECT_AIR:
                  //obj_properties = "MAP_OBJECT_AIR";
                  if((obj_is_destructible == 1) && (obj_is_collectible == 1) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 1) && (obj_is_collectible == 1) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE);
                     break;
                  }
                  if((obj_is_destructible == 1) && (obj_is_collectible == 0) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 1) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 1) && (obj_is_collectible == 0) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_DESTRUCTIBLE);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_DESTRUCTIBLE);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 1) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_COLLECTIBLE);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_COLLECTIBLE);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 0) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_AIR | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 0) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_AIR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_AIR);
                     break;
                  }
                  exit_with_error("Error while loading your map\n");
@@ -224,35 +220,35 @@ void map_load (char *filename)
               case MAP_OBJECT_SEMI_SOLID:
                  //obj_properties = "MAP_OBJECT_SEMI_SOLID";
                  if((obj_is_destructible == 1) && (obj_is_collectible == 1) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 1) && (obj_is_collectible == 1) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE);
                     break;
                  }
                  if((obj_is_destructible == 1) && (obj_is_collectible == 0) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 1) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 1) && (obj_is_collectible == 0) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_DESTRUCTIBLE);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_DESTRUCTIBLE);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 1) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_COLLECTIBLE);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_COLLECTIBLE);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 0) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 0) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SEMI_SOLID);
                     break;
                  }
                  exit_with_error("Error while loading your map\n");
@@ -260,35 +256,35 @@ void map_load (char *filename)
               case MAP_OBJECT_SOLID:
                  //obj_properties = "MAP_OBJECT_SOLID";
                  if((obj_is_destructible == 1) && (obj_is_collectible == 1) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 1) && (obj_is_collectible == 1) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE);
                     break;
                  }
                  if((obj_is_destructible == 1) && (obj_is_collectible == 0) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 1) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 1) && (obj_is_collectible == 0) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_DESTRUCTIBLE);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_DESTRUCTIBLE);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 1) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_COLLECTIBLE);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_COLLECTIBLE);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 0) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SOLID | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 0) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_SOLID);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_SOLID);
                     break;
                  }
                  exit_with_error("Error while loading your map\n");
@@ -296,35 +292,35 @@ void map_load (char *filename)
               case MAP_OBJECT_LIQUID:
                  //obj_properties = "MAP_OBJECT_LIQUID";
                  if((obj_is_destructible == 1) && (obj_is_collectible == 1) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 1) && (obj_is_collectible == 1) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_COLLECTIBLE);
                     break;
                  }
                  if((obj_is_destructible == 1) && (obj_is_collectible == 0) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_DESTRUCTIBLE | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 1) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_COLLECTIBLE | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 1) && (obj_is_collectible == 0) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_DESTRUCTIBLE);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_DESTRUCTIBLE);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 1) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_COLLECTIBLE);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_COLLECTIBLE);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 0) && (obj_is_generator == 1)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_GENERATOR);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID | MAP_OBJECT_GENERATOR);
                     break;
                  }
                  if((obj_is_destructible == 0) && (obj_is_collectible == 0) && (obj_is_generator == 0)){
-                    map_object_add(obj_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID);
+                    map_object_add(buffer_name, (unsigned) obj_frames, MAP_OBJECT_LIQUID);
                     break;
                  }
                  exit_with_error("Error while loading your map\n");
