@@ -338,6 +338,8 @@ void map_load (char *filename)
 
 
         }
+	
+	map_object_end();
                 
         int x;
         int y;
