@@ -66,6 +66,10 @@ void map_save (char *filename)
 	}
 	
 	//stocker propriétés sous forme de int/bool
+	//créer tab d'objets tmp (avec un objet de chaque) et utiliser fonctions du map.h pour extraire propriétés ?
+	/*for(int i=0; i<map_objects(); i++){
+		write(fd, propriétés(i); sizeof(type)); //le type doit être int
+	}*/
 }
 
 void map_load (char *filename)
@@ -96,7 +100,7 @@ void map_load (char *filename)
 		map_set(x, y, obj);
 	}
 
-	//caractéristiques
+	//propriétés
 }
 
 #endif
