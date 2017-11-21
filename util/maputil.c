@@ -161,17 +161,23 @@ int set_width(char* filename, int value){
       }
    }
 
+   fprintf(stderr, "old val %d\n", old_value);
+   fprintf(stderr, "val %d\n", value);
+
    if((old_value - value) > 0){
       while((status = read(fd, &buf, sizeof(int))) > 0){
-         if (buf > value){
-            status = lseek(fd, (off_t) -1 * sizeof(int), SEEK_CUR);
+	fprintf(stderr, "x: %d\n", buf);
+	lseek(fd, 2 * sizeof(int), SEEK_CUR);         
+	if (buf >= value){
+            status = lseek(fd, (off_t) -3 * sizeof(int), SEEK_CUR);
             if (status < 0){
                //dup2(backup, fd);
                //close(backup);
                close(fd);
                return status;
             }
-            int cur_position = status;
+            off_t cur_position = (off_t) status;
+            fprintf(stderr, "curpos: %d\n", (int) cur_position);
             status = lseek(fd, 0, SEEK_END);
             if (status < 0){
                //dup2(backup, fd);
@@ -179,19 +185,23 @@ int set_width(char* filename, int value){
                close(fd);
                return status;
             }
-            int file_end = status;
-            off_t buffer[(file_end - cur_position + 3 * sizeof(int))];
-            lseek(fd, cur_position + 3 * sizeof(int), SEEK_SET);
-            status = read(fd, buffer, (file_end - cur_position + 3 * sizeof(int)) * sizeof(off_t));
+            off_t file_end = (off_t) status;
+	    fprintf(stderr, "filend: %d\n", (int) file_end);
+            off_t buffer[file_end - cur_position + 3 * sizeof(int)];
+	    fprintf(stderr, "sizeofint: %d\n", (int) sizeof(int));
+            lseek(fd, cur_position * sizeof(off_t) + 3 * sizeof(int), SEEK_SET);
+            status = read(fd, &buffer, (file_end - cur_position + 3 * sizeof(int)) * sizeof(off_t));
             if (status < 0){
                //dup2(backup, fd);
                //close(backup);
                close(fd);
                return status;
-            }
+	    }
             lseek(fd, cur_position, SEEK_SET);
-            write(fd, buffer, (file_end - cur_position + 3 * sizeof(int) * sizeof(off_t)));
+            write(fd, &buffer, (file_end - cur_position + 3 * sizeof(int)) * sizeof(off_t));
             ftruncate(fd, file_end - 3 * sizeof(int));
+            lseek(fd, cur_position, SEEK_SET);
+
          }
       }
    }

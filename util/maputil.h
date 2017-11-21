@@ -5,7 +5,7 @@
 #define MODE_GET_OBJECTS      2
 #define MODE_GET_INFO         3
 
-#define NB_PROPERTIES         4 //5
+#define NB_PROPERTIES         5 //6
 
 int get_width(char* filename);
 int get_height(char* filename);
