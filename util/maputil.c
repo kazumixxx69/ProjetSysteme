@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE 500
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -15,25 +17,25 @@ int get(char* filename, int mode){
 
    switch(mode)
    {
-      case 0:
+      case MODE_GET_WIDTH:
          property = "Width";
          break;
-      case 1:
+      case MODE_GET_HEIGHT:
          property = "Height";
          break;
-      case 2:
-         property = "Number of objects";
+      case MODE_GET_OBJECTS:
+         property = "Amount of objects";
          break;
-      default:
-         status = getwidth(filename);
+      case MODE_GET_INFO:
+         status = get_width(filename);
          if (status < 0){
             return status;
          }
-         status = getheight(filename);
+         status = get_height(filename);
          if (status < 0){
             return status;
          }
-         status = getobjects(filename);
+         status = get_objects(filename);
          if (status < 0){
             return status;
          }
@@ -58,58 +60,167 @@ int get(char* filename, int mode){
    return EXIT_SUCCESS;
 }
 
-int getwidth(char* filename){
+int get_width(char* filename){
    int status;
    status = get(filename, 0);
    return status;
 }
 
-int getheight(char* filename){
+int get_height(char* filename){
    int status;
    status = get(filename, 1);
    return status;
 }
 
-int getobjects(char* filename){
+int get_objects(char* filename){
    int status;
    status = get(filename, 2);
    return status;
 }
 
-int getinfo(char* filename){
+int get_info(char* filename){
    int status;
    status = get(filename, 3);
    return status;
 }
 
-/*int setwidth(char* filename, int value){
+int set_width(char* filename, int value){
    int buf = value;
    int old_value;
+   int nb_objects;
    int status;
 
    int fd = open(filename, O_RDWR);
-   char* backup_name = strcat("/backups/", filename);
-   int backup = open(backup_name, O_RDWR | O_CREAT | O_TRUNC, 0666);
 
-   dup2(fd, backup);
+   //dup2(fd, backup);
 
-   lseek(fd, 0 * sizeof(int), SEEK_SET);
-   write(fd, &buf, sizeof(int));
+   status = lseek(fd, 0 * sizeof(int), SEEK_SET);
+   if (status < 0){
+      //dup2(backup, fd);
+      //close(backup);
+      close(fd);
+      return status;
+   }
+   status = read(fd, &old_value, sizeof(int));
+   if (status < 0){
+      //dup2(backup, fd);
+      //close(backup);
+      close(fd);
+      return status;
+   }
+   status = lseek(fd, (off_t) (-1) * sizeof(int), SEEK_CUR);
+   if (status < 0){
+      //dup2(backup, fd);
+      //close(backup);
+      close(fd);
+      return status;
+   }
+   status = write(fd, &buf, sizeof(int));
+   if (status < 0){
+      //dup2(backup, fd);
+      //close(backup);
+      close(fd);
+      return status;
+   }
+   status = lseek(fd, 2 * sizeof(int), SEEK_SET);
+   if (status < 0){
+      //dup2(backup, fd);
+      //close(backup);
+      close(fd);
+      return status;
+   }
+   status = read(fd, &nb_objects, sizeof(int));
+   if (status < 0){
+      //dup2(backup, fd);
+      //close(backup);
+      close(fd);
+      return status;
+   }
+   for (int i = 0; i < nb_objects; i++){
+      int obj_name_length;
+      status = read(fd, &obj_name_length, sizeof(int));
+      if (status < 0){
+         //dup2(backup, fd);
+         //close(backup);
+         close(fd);
+         return status;
+      }
+      status = lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
+      if (status < 0){
+         //dup2(backup, fd);
+         //close(backup);
+         close(fd);
+         return status;
+      }
+      status = lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+      if (status < 0){
+         //dup2(backup, fd);
+         // close(backup);
+         close(fd);
+         return status;
+      }
+   }
+
+   if((old_value - value) > 0){
+      while((status = read(fd, &buf, sizeof(int))) > 0){
+         if (buf > value){
+            status = lseek(fd, (off_t) -1 * sizeof(int), SEEK_CUR);
+            if (status < 0){
+               //dup2(backup, fd);
+               //close(backup);
+               close(fd);
+               return status;
+            }
+            int cur_position = status;
+            status = lseek(fd, 0, SEEK_END);
+            if (status < 0){
+               //dup2(backup, fd);
+               //close(backup);
+               close(fd);
+               return status;
+            }
+            int file_end = status;
+            off_t buffer[(file_end - cur_position + 3 * sizeof(int))];
+            lseek(fd, cur_position + 3 * sizeof(int), SEEK_SET);
+            status = read(fd, buffer, (file_end - cur_position + 3 * sizeof(int)) * sizeof(off_t));
+            if (status < 0){
+               //dup2(backup, fd);
+               //close(backup);
+               close(fd);
+               return status;
+            }
+            lseek(fd, cur_position, SEEK_SET);
+            write(fd, buffer, (file_end - cur_position + 3 * sizeof(int) * sizeof(off_t)));
+            ftruncate(fd, file_end - 3 * sizeof(int));
+         }
+      }
+   }
+
+   if (status < 0){
+      //dup2(backup, fd);
+      //close(backup);
+      close(fd);
+      return status;
+   }
+
+   //close(backup);
+   close(fd);
 
    return EXIT_SUCCESS;
 
-
-   }*/
+}
 
 
 
 int main(int argc, char* argv[]){
    /*remplir vérification arguments machin*/
 
-   getwidth(argv[1]);
-   getheight(argv[1]);
-   getobjects(argv[1]);
-   getinfo(argv[1]);
+   get_width(argv[1]);
+   get_height(argv[1]);
+   get_objects(argv[1]);
+   get_info(argv[1]);
+   set_width(argv[1], atoi(argv[2]));
+   get_info(argv[1]);
 
 
    return EXIT_SUCCESS;
