@@ -221,18 +221,80 @@ int set_width(char* filename, int value){
 }
 
 
+int set_height(char* filename, int value){
+   int buf = value;
+   int old_value;
+   int nb_objects;
+   int status;
+
+   int fd = open(filename, O_RDWR);
+
+   status = lseek(fd, 1 * sizeof(int), SEEK_SET);
+   status = read(fd, &old_value, sizeof(int));
+   status = lseek(fd, (off_t) (-1) * sizeof(int), SEEK_CUR);
+   status = write(fd, &buf, sizeof(int));
+   status = lseek(fd, 1 * sizeof(int), SEEK_SET);
+   status = read(fd, &nb_objects, sizeof(int));
+   for (int i = 0; i < nb_objects; i++){
+      int obj_name_length;
+      status = read(fd, &obj_name_length, sizeof(int));
+      status = lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
+      status = lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+   }
+
+   fprintf(stderr, "old val %d\n", old_value);
+   fprintf(stderr, "val %d\n", value);
+
+   lseek(fd, 1 * sizeof(int), SEEK_CUR);
+
+   while((status = read(fd, &buf, sizeof(int))) > 0){
+	fprintf(stderr, "x: %d\n", buf);
+	lseek(fd, 2 * sizeof(int), SEEK_CUR);         
+	status = lseek(fd, (off_t) -3 * sizeof(int), SEEK_CUR);
+	off_t cur_position = (off_t) status;
+        fprintf(stderr, "curpos: %d\n", (int) cur_position);
+        status = lseek(fd, 0, SEEK_END);
+	off_t file_end = (off_t) status;
+	fprintf(stderr, "filend: %d\n", (int) file_end);
+        char buffer[file_end - cur_position - 3 * sizeof(int)];
+	fprintf(stderr, "sizeofint: %d\n", (int) sizeof(char));
+	lseek(fd, cur_position + 3 * sizeof(int), SEEK_SET);
+	read(fd, &buffer, (file_end - cur_position - 3 * sizeof(int)));
+	lseek(fd, cur_position, SEEK_SET);
+	int newHeight = buf-(old_value-value);
+	write(fd, &newHeight, (file_end - cur_position -3*sizeof(int)));
+	ftruncate(fd, file_end - 3 * sizeof(int));
+        lseek(fd, cur_position, SEEK_SET);
+   }
+   if (status < 0){
+      close(fd);
+      return status;
+   }
+   close(fd);
+   return EXIT_SUCCESS;
+}
+
+
 
 int main(int argc, char* argv[]){
-   /*remplir vérification arguments machin*/
-
-   get_width(argv[1]);
-   get_height(argv[1]);
-   get_objects(argv[1]);
-   get_info(argv[1]);
-   set_width(argv[1], atoi(argv[2]));
-   get_info(argv[1]);
-
-
+   char* filename = argv[1];
+   if(strcmp(argv[2], "--getwidth") == 0){
+	get_width(filename);
+   }
+   if(strcmp(argv[2], "--getheight") == 0){
+	get_height(filename);
+   }
+   if(strcmp(argv[2], "--getobjects") == 0){
+	get_objects(filename);
+   }
+   if(strcmp(argv[2], "--getinfo") == 0){
+	get_info(filename);
+   }
+   if(strcmp(argv[2], "--setwidth") == 0){
+	set_width(filename, atoi(argv[3]));
+   }
+   if(strcmp(argv[2], "--setheight") == 0){
+	set_height(filename, atoi(argv[3]));
+   }
    return EXIT_SUCCESS;
-
 }
