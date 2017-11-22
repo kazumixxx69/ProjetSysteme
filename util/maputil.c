@@ -187,10 +187,10 @@ int set_width(char* filename, int value){
             }
             off_t file_end = (off_t) status;
 	    fprintf(stderr, "filend: %d\n", (int) file_end);
-            off_t buffer[file_end - cur_position + 3 * sizeof(int)];
-	    fprintf(stderr, "sizeofint: %d\n", (int) sizeof(int));
-            lseek(fd, cur_position * sizeof(off_t) + 3 * sizeof(int), SEEK_SET);
-            status = read(fd, &buffer, (file_end - cur_position + 3 * sizeof(int)) * sizeof(off_t));
+            char buffer[file_end - cur_position - 3 * sizeof(int)];
+	    fprintf(stderr, "sizeofint: %d\n", (int) sizeof(char));
+            lseek(fd, cur_position + 3 * sizeof(int), SEEK_SET);
+            status = read(fd, &buffer, (file_end - cur_position - 3 * sizeof(int)));
             if (status < 0){
                //dup2(backup, fd);
                //close(backup);
@@ -198,7 +198,7 @@ int set_width(char* filename, int value){
                return status;
 	    }
             lseek(fd, cur_position, SEEK_SET);
-            write(fd, &buffer, (file_end - cur_position + 3 * sizeof(int)) * sizeof(off_t));
+            write(fd, &buffer, (file_end - cur_position - 3 * sizeof(int)));
             ftruncate(fd, file_end - 3 * sizeof(int));
             lseek(fd, cur_position, SEEK_SET);
 
