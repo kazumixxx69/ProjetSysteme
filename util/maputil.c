@@ -232,6 +232,8 @@ int set_objects(char* filename, int argc, char** objects_list){
    
    int fd = open(filename, O_RDWR);
 
+   //int backup = open(".", O_RDWR | O_TMPFILE, S_IRUSR | S_IWUSR);
+
    lseek(fd, 2 * sizeof(int), SEEK_SET);
    read(fd, &nb_objects_old, sizeof(int));
 
@@ -434,6 +436,74 @@ int set_objects(char* filename, int argc, char** objects_list){
    
 }
 
+int prune_objects(char* filename){
+   int nb_objects;
+   int buf;
+   int status;
+   
+   
+   int fd = open(filename, O_RDWR);
+
+   lseek(fd, 2 * sizeof(int), SEEK_SET);
+   read(fd, &nb_objects, sizeof(int));
+   for (int i = 0; i < nb_objects; i++){
+      int obj_name_length;
+      read(fd, &obj_name_length, sizeof(int));
+      lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
+      lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+   }
+
+   int presence[nb_objects];
+   for (int i = 0; i < nb_objects; i++){
+      presence[i] = 0;
+   }
+   
+   while((status = read(fd, &buf, sizeof(int))) > 0){
+	fprintf(stderr, "x: %d\n", buf);
+        lseek(fd, sizeof(int), SEEK_CUR);
+	read(fd, &buf, sizeof(int));
+        presence[buf]++;
+   }
+
+   int nb_objects_new = nb_objects;
+   
+   lseek(fd, 3 * sizeof(int), SEEK_SET);
+   for(int i = 0; i < nb_objects; i++){
+      if(presence[i] == 0){
+         nb_objects_new--;
+         off_t cur_position = lseek(fd, 0, SEEK_CUR);
+         off_t new_position;
+         int obj_name_length;
+         read(fd, &obj_name_length, sizeof(int));
+         lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
+         new_position = lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+         off_t file_end = lseek(fd, 0, SEEK_END);
+         char buffer[file_end - new_position];
+         lseek(fd, new_position, SEEK_SET);
+         read(fd, &buffer, file_end - new_position);
+         lseek(fd, cur_position, SEEK_SET);
+         write(fd, &buffer, file_end - new_position);
+         status = lseek(fd, 0, SEEK_CUR);
+         ftruncate(fd, status);
+         lseek(fd, cur_position, SEEK_SET);
+      }
+      else{
+         int obj_name_length;
+         read(fd, &obj_name_length, sizeof(int));
+         lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
+         lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+      }
+   }
+
+   lseek(fd, 2 * sizeof(int), SEEK_SET);
+   write(fd, &nb_objects_new, sizeof(int));
+   
+   
+   close(fd);
+   
+   return EXIT_SUCCESS;
+}
+
 
 
 int main(int argc, char* argv[]){
@@ -445,7 +515,8 @@ int main(int argc, char* argv[]){
    //get_info(argv[1]);
    //set_width(argv[1], atoi(argv[2]));
    //get_info(argv[1]);
-   set_objects(argv[1], argc - 2, (argv+2));
+   //set_objects(argv[1], argc - 2, (argv+2));
+   prune_objects(argv[1]);
    
 
 
