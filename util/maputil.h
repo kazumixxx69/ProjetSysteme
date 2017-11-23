@@ -26,6 +26,7 @@ int get_info(char* filename);
 int get(char* filename, int mode);
 
 int set_width(char* filename, int value);
+int set_height(char* filename, int value);
 int set_objects(char* filename, int argc, char** objects_list);
 
 int prune_objects(char* filename);
