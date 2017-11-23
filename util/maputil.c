@@ -212,7 +212,7 @@ int set_width(char* filename, int value){
       close(fd);
       return status;
    }
-  
+
    //close(backup);
    close(fd);
 
@@ -240,7 +240,7 @@ int set_height(char* filename, int value){
       status = lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
       status = lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
    }
-  
+
    fprintf(stderr, "old val %d\n", old_value);
    fprintf(stderr, "val %d\n", value);
 
@@ -474,6 +474,7 @@ int set_objects(char* filename, int argc, char** objects_list){
          cur_position = (off_t) status;
          //fprintf(stderr, "curpos: %d\n", (int) cur_position);
          status = lseek(fd, 0, SEEK_END);
+
          file_end = (off_t) status;
          //fprintf(stderr, "filend: %d\n", (int) file_end);
          char buffer[file_end - cur_position - 3 * sizeof(int)];
@@ -521,8 +522,9 @@ int prune_objects(char* filename){
 	read(fd, &buf, sizeof(int));
         presence[buf]++;
    }
-  
+
    int nb_objects_new = nb_objects;
+   int dec = 0;
    
    lseek(fd, 3 * sizeof(int), SEEK_SET);
    for(int i = 0; i < nb_objects; i++){
@@ -534,6 +536,20 @@ int prune_objects(char* filename){
          read(fd, &obj_name_length, sizeof(int));
          lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
          new_position = lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+         for(int j = i+1; j < nb_objects; j++){
+	    read(fd, &obj_name_length, sizeof(int));
+            lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
+            lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+	 }
+         while((read(fd, &buf, sizeof(int))) > 0){
+	    lseek(fd, sizeof(int), SEEK_CUR);
+	    read(fd, &buf, sizeof(int));
+	    if(buf > (i - dec)){
+	       buf--;
+	       lseek(fd, (off_t) -1 * sizeof(int), SEEK_CUR);
+	       write(fd, &buf, sizeof(int));
+	    }
+	 }
          off_t file_end = lseek(fd, 0, SEEK_END);
          char buffer[file_end - new_position];
          lseek(fd, new_position, SEEK_SET);
@@ -543,6 +559,7 @@ int prune_objects(char* filename){
          status = lseek(fd, 0, SEEK_CUR);
          ftruncate(fd, status);
          lseek(fd, cur_position, SEEK_SET);
+	 dec++;
       }
       else{
          int obj_name_length;
