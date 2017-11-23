@@ -582,10 +582,10 @@ int main(int argc, char* argv[]){
 	set_height(filename, atoi(argv[3]));
    }
    if(strcmp(argv[2], "--setobjects") == 0){
-	set_height(filename, argc - 3, argv + 3);
+	set_objects(filename, argc - 3, argv + 3);
    }
    if(strcmp(argv[2], "--pruneobjects") == 0){
-	set_height(filename);
+	prune_objects(filename);
    }
    return EXIT_SUCCESS;
 }
