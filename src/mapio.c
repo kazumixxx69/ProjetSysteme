@@ -182,6 +182,7 @@ void map_load (char *filename)
       char buffer_name[obj_name_length+1];
       err = read(fd, &buffer_name, obj_name_length * sizeof(char));
       if(err < 0) exit_with_error("Failed to load your map: object path\n");
+      buffer_name[obj_name_length] = '\0'; 
       
       err = read(fd, &buf, sizeof(int));
       if(err < 0) exit_with_error("Failed to load your map: object %s frames\n", buffer_name);

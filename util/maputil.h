@@ -1,5 +1,17 @@
 #define MAP_OBJECT_NONE      -1
 
+#define MAP_OBJECT_AIR           0
+#define MAP_OBJECT_SEMI_SOLID    (1UL << 0)
+#define MAP_OBJECT_SOLID         (1UL << 1)
+#define MAP_OBJECT_LIQUID        (1UL << 2)
+// unused slot                   (1UL << 3)
+// unused slot                   (1UL << 4)
+// unused slot                   (1UL << 5)
+#define MAP_OBJECT_DESTRUCTIBLE  (1UL << 6)
+#define MAP_OBJECT_COLLECTIBLE   (1UL << 7)
+#define MAP_OBJECT_GENERATOR     (1UL << 8)
+#define MAP_OBJECT_POWERUP       (1UL << 9)
+
 #define MODE_GET_WIDTH        0
 #define MODE_GET_HEIGHT       1
 #define MODE_GET_OBJECTS      2
@@ -15,3 +27,6 @@ int get(char* filename, int mode);
 
 int set_width(char* filename, int value);
 int set_height(char* filename, int value);
+int set_objects(char* filename, int argc, char** objects_list);
+
+int prune_objects(char* filename);
