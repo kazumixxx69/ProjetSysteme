@@ -240,9 +240,6 @@ int set_objects(char* filename, int argc, char** objects_list){
       return EXIT_FAILURE;
    }
 
-   lseek(fd, (off_t) -1 * sizeof(int), SEEK_CUR);
-   write(fd, &nb_objects_new, sizeof(int));
-
    char* names_old[nb_objects_old];
    char* names_new[nb_objects_new];
 
@@ -287,8 +284,8 @@ int set_objects(char* filename, int argc, char** objects_list){
       for(int j = 0; j < nb_objects_new; j++){
          if(strcmp(names_old[i], names_new[j]) == 0){
             replace[i] = j;
-            //fprintf(stderr, "%s %d et %s %d\n", names_old[i], i, names_new[j], j);
-            //fprintf(stderr, "%d\n", replace[i]);
+            fprintf(stderr, "%s %d et %s %d\n", names_old[i], i, names_new[j], j);
+            fprintf(stderr, "%d\n", replace[i]);
          }
       }
    }
@@ -307,7 +304,7 @@ int set_objects(char* filename, int argc, char** objects_list){
    for(int i = 0; i < nb_objects_new; i++){
       obj_name_length = (int) strlen(objects_list[i * (NB_PROPERTIES + 1)]);
       write(fd, &obj_name_length, sizeof(int));
-      write(fd, (objects_list[i * (NB_PROPERTIES + 1)]), obj_name_length * sizeof(char));
+      write(fd, &(objects_list[i * (NB_PROPERTIES + 1)]), obj_name_length * sizeof(char));
 
       int nb_frames = atoi(objects_list[i * (NB_PROPERTIES + 1) + 1]);
       write(fd, &nb_frames, sizeof(int));
@@ -383,27 +380,18 @@ int set_objects(char* filename, int argc, char** objects_list){
       }
    }
 
-   for (int i = 0; i < nb_objects_old; i++){
-      free(names_old[i]);
-   }
-   for (int j = 0; j < nb_objects_new; j++){
-      free(names_new[j]);
-   }
-
    write(fd, &array, file_end - cur_position);
-   status = lseek(fd, 0, SEEK_CUR);
-   ftruncate(fd, status);
-   
-   lseek(fd, (off_t) -1 * (file_end - cur_position), SEEK_CUR);
 
+   //truncate
    
+
    int buf;
 
    while((read(fd, &buf, sizeof(int))) > 0){
-      //fprintf(stderr, "x: %d\n", buf);
+      fprintf(stderr, "x: %d\n", buf);
       lseek(fd, 1 * sizeof(int), SEEK_CUR);
       read(fd, &buf, sizeof(int));
-      //fprintf(stderr, "%d, %d\n", buf, replace[buf]);
+      fprintf(stderr, "%d, %d\n", buf, replace[buf]);
       if (replace[buf] != -1){
          lseek(fd, (off_t) -1 * sizeof(int), SEEK_CUR);
          write(fd, &(replace[buf]), sizeof(int));
@@ -412,13 +400,13 @@ int set_objects(char* filename, int argc, char** objects_list){
          status = lseek(fd, (off_t) -3 * sizeof(int), SEEK_CUR);
 
          cur_position = (off_t) status;
-         //fprintf(stderr, "curpos: %d\n", (int) cur_position);
+         fprintf(stderr, "curpos: %d\n", (int) cur_position);
          status = lseek(fd, 0, SEEK_END);
 
          file_end = (off_t) status;
-         //fprintf(stderr, "filend: %d\n", (int) file_end);
+         fprintf(stderr, "filend: %d\n", (int) file_end);
          char buffer[file_end - cur_position - 3 * sizeof(int)];
-         //fprintf(stderr, "sizeofint: %d\n", (int) sizeof(char));
+         fprintf(stderr, "sizeofint: %d\n", (int) sizeof(char));
          lseek(fd, cur_position + 3 * sizeof(int), SEEK_SET);
          read(fd, &buffer, (file_end - cur_position - 3 * sizeof(int)));
 
@@ -439,10 +427,10 @@ int set_objects(char* filename, int argc, char** objects_list){
 int main(int argc, char* argv[]){
    /*remplir vérification arguments machin*/
 
-   //get_width(argv[1]);
-   //get_height(argv[1]);
-   //get_objects(argv[1]);
-   //get_info(argv[1]);
+   get_width(argv[1]);
+   get_height(argv[1]);
+   get_objects(argv[1]);
+   get_info(argv[1]);
    //set_width(argv[1], atoi(argv[2]));
    //get_info(argv[1]);
    set_objects(argv[1], argc - 2, (argv+2));
