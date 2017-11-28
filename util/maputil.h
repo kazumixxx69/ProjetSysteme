@@ -30,3 +30,5 @@ int set_height(char* filename, int value);
 int set_objects(char* filename, int argc, char** objects_list);
 
 int prune_objects(char* filename);
+
+void decal_mat(int fd, int* pstatus);

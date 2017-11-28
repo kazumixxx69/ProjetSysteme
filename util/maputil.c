@@ -7,7 +7,6 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
 #include "maputil.h"
 
 //Méthode principale des fonctions "get_"
@@ -45,13 +44,17 @@ int get(char* filename, int mode){
 
    int fd = open(filename, O_RDONLY);
    if (fd < 0){
-      status = fd;
-      return status;
+      return fd;
    }
 
-   lseek(fd, mode * sizeof(int), SEEK_SET);
+   status = lseek(fd, mode * sizeof(int), SEEK_SET);
+   if (status < 0){
+      close(fd);
+      return status;
+   }
    status = read(fd, &buf, sizeof(int));
    if (status < 0){
+      close(fd);
       return status;
    }
    fprintf(stdout, "%s: %d\n", property, buf);
@@ -92,35 +95,75 @@ int set_width(char* filename, int value){
    int status;
 
    int fd = open(filename, O_RDWR);
+   if(fd < 0){
+      return fd;
+   }
+
+   int backup_size = lseek(fd, 0, SEEK_END);
+   if (backup_size < 0){
+      close(fd);
+      return backup_size;
+   }
+   char backup[backup_size];
+   status = lseek(fd, 0, SEEK_SET);
+   if (status < 0){
+      close(fd);
+      return status;
+   }
+   status = read(fd, &backup, backup_size);
+   if (status < 0){
+      close(fd);
+      return status;
+   }
+
+
    //on se place au début du fichier
    status = lseek(fd, 0 * sizeof(int), SEEK_SET);
    if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
       close(fd);
       return status;
    }
    status = read(fd, &old_value, sizeof(int));
    if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
       close(fd);
       return status;
    }
    status = lseek(fd, (off_t) (-1) * sizeof(int), SEEK_CUR);
    if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
       close(fd);
       return status;
    }
    //on remplace la width de la map
    status = write(fd, &buf, sizeof(int));
    if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
       close(fd);
       return status;
    }
    status = lseek(fd, 2 * sizeof(int), SEEK_SET);
    if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
       close(fd);
       return status;
    }
    status = read(fd, &nb_objects, sizeof(int));
    if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
       close(fd);
       return status;
    }
@@ -128,16 +171,25 @@ int set_width(char* filename, int value){
       int obj_name_length;
       status = read(fd, &obj_name_length, sizeof(int));
       if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
          close(fd);
          return status;
       }
       status = lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
       if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
          close(fd);
          return status;
       }
       status = lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
       if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
          close(fd);
          return status;
       }
@@ -145,49 +197,37 @@ int set_width(char* filename, int value){
 
    /*si la map a perdu en largeur, on supprime les objets qui n'y rentrent plus, 
    en décalant les objets suivants si nécessaire*/
-   fprintf(stderr, "old val %d\n", old_value);
-   fprintf(stderr, "val %d\n", value);
-
    if((old_value - value) > 0){
       while((status = read(fd, &buf, sizeof(int))) > 0){
-	fprintf(stderr, "x: %d\n", buf);
-	lseek(fd, 2 * sizeof(int), SEEK_CUR);         
+	status = lseek(fd, 2 * sizeof(int), SEEK_CUR);
+        if (status < 0){
+           lseek(fd, 0, SEEK_SET);
+           write(fd, &backup, backup_size);
+           ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+           close(fd);
+           return status;
+        }         
 	if (buf >= value){
-            status = lseek(fd, (off_t) -3 * sizeof(int), SEEK_CUR);
+	    decal_mat(fd, &status);
             if (status < 0){
+               lseek(fd, 0, SEEK_SET);
+               write(fd, &backup, backup_size);
+               ftruncate(fd, lseek(fd, 0, SEEK_CUR));
                close(fd);
                return status;
             }
-            off_t cur_position = (off_t) status;
-            fprintf(stderr, "curpos: %d\n", (int) cur_position);
-            status = lseek(fd, 0, SEEK_END);
-            if (status < 0){
-               close(fd);
-               return status;
-            }
-            off_t file_end = (off_t) status;
-	    fprintf(stderr, "filend: %d\n", (int) file_end);
-            char buffer[file_end - cur_position - 3 * sizeof(int)];
-	    fprintf(stderr, "sizeofint: %d\n", (int) sizeof(char));
-            lseek(fd, cur_position + 3 * sizeof(int), SEEK_SET);
-            status = read(fd, &buffer, (file_end - cur_position - 3 * sizeof(int)));
-            if (status < 0){
-               close(fd);
-               return status;
-	    }
-            lseek(fd, cur_position, SEEK_SET);
-            write(fd, &buffer, (file_end - cur_position - 3 * sizeof(int)));
-            ftruncate(fd, file_end - 3 * sizeof(int));
-            lseek(fd, cur_position, SEEK_SET);
-
          }
       }
    }
 
    if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
       close(fd);
       return status;
    }
+
    close(fd);
    return EXIT_SUCCESS;
 }
@@ -199,49 +239,148 @@ int set_height(char* filename, int value){
    int status;
 
    int fd = open(filename, O_RDWR);
+   if (fd < 0){
+      return fd;
+   }
+
+   int backup_size = lseek(fd, 0, SEEK_END);
+   if (backup_size < 0){
+      close(fd);
+      return backup_size;
+   }
+   char backup[backup_size];
+   status = lseek(fd, 0, SEEK_SET);
+   if (status < 0){
+      close(fd);
+      return status;
+   }
+   status = read(fd, &backup, backup_size);
+   if (status < 0){
+      close(fd);
+      return status;
+   }
+
    //on se positionne pour modifier la height
    status = lseek(fd, 1 * sizeof(int), SEEK_SET);
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
    status = read(fd, &old_value, sizeof(int));
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
    status = lseek(fd, (off_t) (-1) * sizeof(int), SEEK_CUR);
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
    //on modifie la height
    status = write(fd, &buf, sizeof(int));
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
    status = read(fd, &nb_objects, sizeof(int));
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
    for (int i = 0; i < nb_objects; i++){
       int obj_name_length;
       status = read(fd, &obj_name_length, sizeof(int));
+      if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
       status = lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
+      if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
       status = lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+      if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
    }
 
-   fprintf(stderr, "old val %d\n", old_value);
-   fprintf(stderr, "val %d\n", value);
    /*si la hauteur a diminué, on supprime les objets qui ne sont plus contenus dans la map, 
    en décalant les objets suivants si nécessaire*/
    while((status = read(fd, &buf, sizeof(int))) > 0){
-	fprintf(stderr, "x: %d\n", buf);
-        read(fd, &buf, sizeof(int));
+        status = read(fd, &buf, sizeof(int));
+        if (status < 0){
+           lseek(fd, 0, SEEK_SET);
+           write(fd, &backup, backup_size);
+           ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+           close(fd);
+           return status;
+        }
         int new_height = buf-(old_value-value);
-        lseek(fd, (off_t) -1 * sizeof(int), SEEK_CUR);
-	write(fd, &new_height, sizeof(int));
-	lseek(fd, sizeof(int), SEEK_CUR);
+        status = lseek(fd, (off_t) -1 * sizeof(int), SEEK_CUR);
+        if (status < 0){
+           lseek(fd, 0, SEEK_SET);
+           write(fd, &backup, backup_size);
+           ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+           close(fd);
+           return status;
+        }
+	status = write(fd, &new_height, sizeof(int));
+        if (status < 0){
+           lseek(fd, 0, SEEK_SET);
+           write(fd, &backup, backup_size);
+           ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+           close(fd);
+           return status;
+        }
+	status = lseek(fd, sizeof(int), SEEK_CUR);
+        if (status < 0){
+           lseek(fd, 0, SEEK_SET);
+           write(fd, &backup, backup_size);
+           ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+           close(fd);
+           return status;
+        }
         if(new_height < 0){
-            status = lseek(fd, (off_t) -3 * sizeof(int), SEEK_CUR);
-            off_t cur_position = (off_t) status;
-            fprintf(stderr, "curpos: %d\n", (int) cur_position);
-            status = lseek(fd, 0, SEEK_END);
-            off_t file_end = (off_t) status;
-	    fprintf(stderr, "filend: %d\n", (int) file_end);
-            char buffer[file_end - cur_position - 3 * sizeof(int)];
-	    fprintf(stderr, "sizeofint: %d\n", (int) sizeof(char));
-            lseek(fd, cur_position + 3 * sizeof(int), SEEK_SET);
-            status = read(fd, &buffer, (file_end - cur_position - 3 * sizeof(int)));
-            lseek(fd, cur_position, SEEK_SET);
-            write(fd, &buffer, (file_end - cur_position - 3 * sizeof(int)));
-            ftruncate(fd, file_end - 3 * sizeof(int));
-            lseek(fd, cur_position, SEEK_SET);
+	    decal_mat(fd, &status);
+	    if (status < 0){
+               lseek(fd, 0, SEEK_SET);
+               write(fd, &backup, backup_size);
+               ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+               close(fd);
+               return status;
+            }
         }
    }
    if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
       close(fd);
       return status;
    }
@@ -252,24 +391,74 @@ int set_height(char* filename, int value){
 int set_objects(char* filename, int argc, char** objects_list){
    int nb_objects_old;
    int nb_objects_new = (argc)/(NB_PROPERTIES + 1);
+   int status;
 
    if((nb_objects_new <= 0)||(((argc)%(NB_PROPERTIES + 1))!=0)){
-      fprintf(stderr, "Error args\n");
+      fprintf(stderr, "Error: Invalid argument format\n");
       return EXIT_FAILURE;
    }
    
    int fd = open(filename, O_RDWR);
+   if (fd < 0){
+      return fd;
+   }
+
+   int backup_size = lseek(fd, 0, SEEK_END);
+   if (backup_size < 0){
+      close(fd);
+      return backup_size;
+   }
+   char backup[backup_size];
+   status = lseek(fd, 0, SEEK_SET);
+   if (status < 0){
+      close(fd);
+      return status;
+   }
+   status = read(fd, &backup, backup_size);
+   if (status < 0){
+      close(fd);
+      return status;
+   }
+
    //on se positionne sur le nombre d'objets
-   lseek(fd, 2 * sizeof(int), SEEK_SET);
-   read(fd, &nb_objects_old, sizeof(int));
+   status = lseek(fd, 2 * sizeof(int), SEEK_SET);
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
+   status = read(fd, &nb_objects_old, sizeof(int));
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
 
    if(nb_objects_new < nb_objects_old){
-      fprintf(stderr, "Error must be more or as many objects\n");
+      fprintf(stderr, "Error: There must be as many or more objects than before\n");
       return EXIT_FAILURE;
    }
    //on remplace le nombre d'objets
-   lseek(fd, (off_t) -1 * sizeof(int), SEEK_CUR);
-   write(fd, &nb_objects_new, sizeof(int));
+   status = lseek(fd, (off_t) -1 * sizeof(int), SEEK_CUR);
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
+   status = write(fd, &nb_objects_new, sizeof(int));
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
 
    //les nouveaux objets vont être écrits, avec leurs propriétés
    char* names_old[nb_objects_old];
@@ -277,21 +466,80 @@ int set_objects(char* filename, int argc, char** objects_list){
    int pos = 0;
    while(objects_list[pos * (NB_PROPERTIES + 1)]!=NULL){
       names_new[pos] = (char*) malloc((strlen(objects_list[pos * (NB_PROPERTIES + 1)])) * sizeof(char));
+      if(names_new[pos] == NULL){
+         for (int j = 0; j < pos; j++){
+            free(names_new[j]);
+         }
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return -1;
+      }
       strcpy(names_new[pos], objects_list[pos * (NB_PROPERTIES + 1)]);
       pos++;
    }
 
    int obj_name_length;
    for(pos = 0; pos < nb_objects_old; pos++){
-      read(fd, &obj_name_length, sizeof(int));
+      status = read(fd, &obj_name_length, sizeof(int));
+      if (status < 0){
+         for (int j = 0; j < nb_objects_new; j++){
+            free(names_new[j]);
+         }
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
       char buffer_name;
       names_old[pos] = (char*) malloc((obj_name_length + 1) * sizeof(char));
+      if(names_old[pos] == NULL){
+         for (int i = 0; i < pos; i++){
+            free(names_old[i]);
+         }
+         for (int j = 0; j < nb_objects_new; j++){
+            free(names_new[j]);
+         }
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
       for(int i = 0; i < obj_name_length; i++){
-         read(fd, &buffer_name, sizeof(char));
+         status = read(fd, &buffer_name, sizeof(char));
+         if (status < 0){
+            for (int i = 0; i <= pos; i++){
+               free(names_old[i]);
+            }
+            for (int j = 0; j < nb_objects_new; j++){
+               free(names_new[j]);
+            }
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
          names_old[pos][i] = buffer_name;
       }
       names_old[pos][obj_name_length] = '\0';
-      lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+      status = lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+      if (status < 0){
+         for (int i = 0; i <= pos; i++){
+            free(names_old[i]);
+         }
+         for (int j = 0; j < nb_objects_new; j++){
+            free(names_new[j]);
+         }
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
    }
 
    int replace[nb_objects_old];
@@ -307,44 +555,134 @@ int set_objects(char* filename, int argc, char** objects_list){
       }
    }
 
-   int status;
+   for (int i = 0; i < nb_objects_old; i++){
+      free(names_old[i]);
+   }
+   for (int j = 0; j < nb_objects_new; j++){
+      free(names_new[j]);
+   }
+
    off_t cur_position;
    off_t file_end;
 
    cur_position = lseek(fd, 0, SEEK_CUR);
+   if (cur_position < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return cur_position;
+   }
    file_end = lseek(fd, 0, SEEK_END);
+   if (file_end < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return file_end;
+   }
    char array[file_end - cur_position];
-   lseek(fd, cur_position, SEEK_SET);
-   read(fd, &array, file_end - cur_position);
+   status = lseek(fd, cur_position, SEEK_SET);
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
+   status = read(fd, &array, file_end - cur_position);
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
 
-   lseek(fd, 3 * sizeof(int), SEEK_SET);
+   status = lseek(fd, 3 * sizeof(int), SEEK_SET);
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
    for(int i = 0; i < nb_objects_new; i++){
       obj_name_length = (int) strlen(objects_list[i * (NB_PROPERTIES + 1)]);
-      write(fd, &obj_name_length, sizeof(int));
-      write(fd, (objects_list[i * (NB_PROPERTIES + 1)]), obj_name_length * sizeof(char));
+      status = write(fd, &obj_name_length, sizeof(int));
+      if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
+      status = write(fd, (objects_list[i * (NB_PROPERTIES + 1)]), obj_name_length * sizeof(char));
+      if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
 
       int nb_frames = atoi(objects_list[i * (NB_PROPERTIES + 1) + 1]);
-      write(fd, &nb_frames, sizeof(int));
+      status = write(fd, &nb_frames, sizeof(int));
+      if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
 
       int prop;
       if(strcmp(objects_list[i * (NB_PROPERTIES + 1) + 2], "air") == 0){
          prop = MAP_OBJECT_AIR;
-         write(fd, &prop, sizeof(int));
+         status = write(fd, &prop, sizeof(int));
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            write(fd, &backup, backup_size);
+            close(fd);
+            return status;
+         }
       }
       else{
          if(strcmp(objects_list[i * (NB_PROPERTIES + 1) + 2], "semi-solid") == 0){
             prop = MAP_OBJECT_SEMI_SOLID;
-            write(fd, &prop, sizeof(int));
+            status = write(fd, &prop, sizeof(int));
+            if (status < 0){
+               lseek(fd, 0, SEEK_SET);
+               write(fd, &backup, backup_size);
+               ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+               close(fd);
+               return status;
+            }
          }
          else{
             if(strcmp(objects_list[i * (NB_PROPERTIES + 1) + 2], "solid") == 0){
                prop = MAP_OBJECT_SOLID;
-               write(fd, &prop, sizeof(int));
+               status = write(fd, &prop, sizeof(int));
+               if (status < 0){
+                  lseek(fd, 0, SEEK_SET);
+                  write(fd, &backup, backup_size);
+                  ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+                  close(fd);
+                  return status;
+               }
             }
             else{
                if(strcmp(objects_list[i * (NB_PROPERTIES + 1) + 2], "liquid") == 0){
                   prop = MAP_OBJECT_LIQUID;
-                  write(fd, &prop, sizeof(int));
+                  status = write(fd, &prop, sizeof(int));
+                  if (status < 0){
+                     lseek(fd, 0, SEEK_SET);
+                     write(fd, &backup, backup_size);
+                     ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+                     close(fd);
+                     return status;
+                  }
                }
                else{
                   return EXIT_FAILURE;
@@ -355,12 +693,26 @@ int set_objects(char* filename, int argc, char** objects_list){
 
       if(strcmp(objects_list[i * (NB_PROPERTIES + 1) + 3], "destructible") == 0){
          prop = 1;
-         write(fd, &prop, sizeof(int));
+         status = write(fd, &prop, sizeof(int));
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
       }
       else{
          if(strcmp(objects_list[i * (NB_PROPERTIES + 1) + 3], "not-destructible") == 0){
             prop = 0;
-            write(fd, &prop, sizeof(int));
+            status = write(fd, &prop, sizeof(int));
+            if (status < 0){
+               lseek(fd, 0, SEEK_SET);
+               write(fd, &backup, backup_size);
+               ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+               close(fd);
+               return status;
+            }
          }
          else{
             return EXIT_FAILURE;
@@ -369,12 +721,26 @@ int set_objects(char* filename, int argc, char** objects_list){
 
       if(strcmp(objects_list[i * (NB_PROPERTIES + 1) + 4], "collectible") == 0){
          prop = 1;
-         write(fd, &prop, sizeof(int));
+         status = write(fd, &prop, sizeof(int));
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
       }
       else{
          if(strcmp(objects_list[i * (NB_PROPERTIES + 1) + 4], "not-collectible") == 0){
             prop = 0;
-            write(fd, &prop, sizeof(int));
+            status = write(fd, &prop, sizeof(int));
+            if (status < 0){
+               lseek(fd, 0, SEEK_SET);
+               write(fd, &backup, backup_size);
+               ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+               close(fd);
+               return status;
+            }
          }
          else{
             return EXIT_FAILURE;
@@ -383,12 +749,26 @@ int set_objects(char* filename, int argc, char** objects_list){
 
       if(strcmp(objects_list[i * (NB_PROPERTIES + 1) + 5], "generator") == 0){
          prop = 1;
-         write(fd, &prop, sizeof(int));
+         status = write(fd, &prop, sizeof(int));
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
       }
       else{
          if(strcmp(objects_list[i * (NB_PROPERTIES + 1) + 5], "not-generator") == 0){
             prop = 0;
-            write(fd, &prop, sizeof(int));
+            status = write(fd, &prop, sizeof(int));
+            if (status < 0){
+               lseek(fd, 0, SEEK_SET);
+               write(fd, &backup, backup_size);
+               ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+               close(fd);
+               return status;
+            }
          }
          else{
             return EXIT_FAILURE;
@@ -396,44 +776,98 @@ int set_objects(char* filename, int argc, char** objects_list){
       }
    }
 
-   for (int i = 0; i < nb_objects_old; i++){
-      free(names_old[i]);
+   status = write(fd, &array, file_end - cur_position);
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
    }
-   for (int j = 0; j < nb_objects_new; j++){
-      free(names_new[j]);
-   }
-
-   write(fd, &array, file_end - cur_position);
    status = lseek(fd, 0, SEEK_CUR);
-   ftruncate(fd, status);
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
+   int trunc_err;
+   trunc_err = ftruncate(fd, status);
+   if (trunc_err < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return trunc_err;
+   }
    
-   lseek(fd, (off_t) -1 * (file_end - cur_position), SEEK_CUR);
+   status = lseek(fd, (off_t) -1 * (file_end - cur_position), SEEK_CUR);
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
    
    int buf;
-   while((read(fd, &buf, sizeof(int))) > 0){
-      lseek(fd, 1 * sizeof(int), SEEK_CUR);
-      read(fd, &buf, sizeof(int));
+   while((status = (read(fd, &buf, sizeof(int)))) > 0){
+      status = lseek(fd, 1 * sizeof(int), SEEK_CUR);
+      if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
+      status = read(fd, &buf, sizeof(int));
+      if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
       if (replace[buf] != -1){
-         lseek(fd, (off_t) -1 * sizeof(int), SEEK_CUR);
-         write(fd, &(replace[buf]), sizeof(int));
+         status = lseek(fd, (off_t) -1 * sizeof(int), SEEK_CUR);
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
+         status = write(fd, &(replace[buf]), sizeof(int));
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
       }
       else{      
-         status = lseek(fd, (off_t) -3 * sizeof(int), SEEK_CUR);
-
-         cur_position = (off_t) status;
-         status = lseek(fd, 0, SEEK_END);
-
-         file_end = (off_t) status;
-         char buffer[file_end - cur_position - 3 * sizeof(int)];
-         lseek(fd, cur_position + 3 * sizeof(int), SEEK_SET);
-         read(fd, &buffer, (file_end - cur_position - 3 * sizeof(int)));
-
-         lseek(fd, cur_position, SEEK_SET);
-         write(fd, &buffer, (file_end - cur_position - 3 * sizeof(int)));
-         ftruncate(fd, file_end - 3 * sizeof(int));
-         lseek(fd, cur_position, SEEK_SET);
+         decal_mat(fd, &status);
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
       }
-   }   
+   }
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
+
+   close(fd);
+   
    return EXIT_SUCCESS;
 }
 
@@ -441,15 +875,71 @@ int prune_objects(char* filename){
    int nb_objects;
    int buf;
    int status;
-   int fd = open(filename, O_RDWR);
 
-   lseek(fd, 2 * sizeof(int), SEEK_SET);
-   read(fd, &nb_objects, sizeof(int));
+   int fd = open(filename, O_RDWR);
+   if (fd < 0){
+      return fd;
+   }
+
+   int backup_size = lseek(fd, 0, SEEK_END);
+   if (backup_size < 0){
+      close(fd);
+      return backup_size;
+   }
+   char backup[backup_size];
+   status = lseek(fd, 0, SEEK_SET);
+   if (status < 0){
+      close(fd);
+      return status;
+   }
+   status = read(fd, &backup, backup_size);
+   if (status < 0){
+      close(fd);
+      return status;
+   }
+
+   status = lseek(fd, 2 * sizeof(int), SEEK_SET);
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
+   status = read(fd, &nb_objects, sizeof(int));
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
    for (int i = 0; i < nb_objects; i++){
       int obj_name_length;
-      read(fd, &obj_name_length, sizeof(int));
-      lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
-      lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+      status = read(fd, &obj_name_length, sizeof(int));
+      if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
+      status = lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
+      if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
+      status = lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+      if (status < 0){
+         lseek(fd, 0, SEEK_SET);
+         write(fd, &backup, backup_size);
+         ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+         close(fd);
+         return status;
+      }
    }
 
    int presence[nb_objects];
@@ -458,89 +948,347 @@ int prune_objects(char* filename){
    }
    
    while((status = read(fd, &buf, sizeof(int))) > 0){
-	fprintf(stderr, "x: %d\n", buf);
-        lseek(fd, sizeof(int), SEEK_CUR);
-	read(fd, &buf, sizeof(int));
+        status = lseek(fd, sizeof(int), SEEK_CUR);
+        if (status < 0){
+           lseek(fd, 0, SEEK_SET);
+           write(fd, &backup, backup_size);
+           ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+           close(fd);
+           return status;
+        }
+	status = read(fd, &buf, sizeof(int));
+        if (status < 0){
+           lseek(fd, 0, SEEK_SET);
+           write(fd, &backup, backup_size);
+           ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+           close(fd);
+           return status;
+        }
         presence[buf]++;
+   }
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
    }
 
    int nb_objects_new = nb_objects;
    int dec = 0;
    
-   lseek(fd, 3 * sizeof(int), SEEK_SET);
+   status = lseek(fd, 3 * sizeof(int), SEEK_SET);
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
    for(int i = 0; i < nb_objects; i++){
       if(presence[i] == 0){
          nb_objects_new--;
          off_t cur_position = lseek(fd, 0, SEEK_CUR);
+         if (cur_position < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return cur_position;
+         }
          off_t new_position;
          int obj_name_length;
-         read(fd, &obj_name_length, sizeof(int));
-         lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
+         status = read(fd, &obj_name_length, sizeof(int));
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
+         status = lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
          new_position = lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+         if (new_position < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return new_position;
+         }
          for(int j = i+1; j < nb_objects; j++){
-	    read(fd, &obj_name_length, sizeof(int));
-            lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
-            lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+	    status = read(fd, &obj_name_length, sizeof(int));
+            if (status < 0){
+               lseek(fd, 0, SEEK_SET);
+               write(fd, &backup, backup_size);
+               ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+               close(fd);
+               return status;
+            }
+            status = lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
+            if (status < 0){
+               lseek(fd, 0, SEEK_SET);
+               write(fd, &backup, backup_size);
+               ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+               close(fd);
+               return status;
+            }
+            status = lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+            if (status < 0){
+               lseek(fd, 0, SEEK_SET);
+               write(fd, &backup, backup_size);
+               ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+               close(fd);
+               return status;
+            }
 	 }
-         while((read(fd, &buf, sizeof(int))) > 0){
-	    lseek(fd, sizeof(int), SEEK_CUR);
-	    read(fd, &buf, sizeof(int));
+         while((status = (read(fd, &buf, sizeof(int)))) > 0){
+	    status = lseek(fd, sizeof(int), SEEK_CUR);
+            if (status < 0){
+               lseek(fd, 0, SEEK_SET);
+               write(fd, &backup, backup_size);
+               ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+               close(fd);
+               return status;
+            }
+	    status = read(fd, &buf, sizeof(int));
+            if (status < 0){
+               lseek(fd, 0, SEEK_SET);
+               write(fd, &backup, backup_size);
+               ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+               close(fd);
+               return status;
+            }
 	    if(buf > (i - dec)){
 	       buf--;
-	       lseek(fd, (off_t) -1 * sizeof(int), SEEK_CUR);
-	       write(fd, &buf, sizeof(int));
+	       status = lseek(fd, (off_t) -1 * sizeof(int), SEEK_CUR);
+               if (status < 0){
+                  lseek(fd, 0, SEEK_SET);
+                  write(fd, &backup, backup_size);
+                  ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+                  close(fd);
+                  return status;
+               }
+	       status = write(fd, &buf, sizeof(int));
+               if (status < 0){
+                  lseek(fd, 0, SEEK_SET);
+                  write(fd, &backup, backup_size);
+                  ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+                  close(fd);
+                  return status;
+               }
 	    }
 	 }
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
          off_t file_end = lseek(fd, 0, SEEK_END);
+         if (file_end < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return file_end;
+         }
          char buffer[file_end - new_position];
-         lseek(fd, new_position, SEEK_SET);
-         read(fd, &buffer, file_end - new_position);
-         lseek(fd, cur_position, SEEK_SET);
-         write(fd, &buffer, file_end - new_position);
+         status = lseek(fd, new_position, SEEK_SET);
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
+         status = read(fd, &buffer, file_end - new_position);
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
+         status = lseek(fd, cur_position, SEEK_SET);
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
+         status = write(fd, &buffer, file_end - new_position);
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
          status = lseek(fd, 0, SEEK_CUR);
-         ftruncate(fd, status);
-         lseek(fd, cur_position, SEEK_SET);
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
+	 int trunc_err;
+         trunc_err = ftruncate(fd, status);
+         if (trunc_err < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return trunc_err;
+         }
+         status = lseek(fd, cur_position, SEEK_SET);
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
 	 dec++;
       }
       else{
          int obj_name_length;
-         read(fd, &obj_name_length, sizeof(int));
-         lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
-         lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+         status = read(fd, &obj_name_length, sizeof(int));
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
+         status = lseek(fd, obj_name_length * sizeof(char), SEEK_CUR);
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
+         status = lseek(fd, NB_PROPERTIES * sizeof(int), SEEK_CUR);
+         if (status < 0){
+            lseek(fd, 0, SEEK_SET);
+            write(fd, &backup, backup_size);
+            ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+            close(fd);
+            return status;
+         }
       }
    }
-   lseek(fd, 2 * sizeof(int), SEEK_SET);
-   write(fd, &nb_objects_new, sizeof(int));
+   status = lseek(fd, 2 * sizeof(int), SEEK_SET);
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
+   status = write(fd, &nb_objects_new, sizeof(int));
+   if (status < 0){
+      lseek(fd, 0, SEEK_SET);
+      write(fd, &backup, backup_size);
+      ftruncate(fd, lseek(fd, 0, SEEK_CUR));
+      close(fd);
+      return status;
+   }
 
    close(fd);
    return EXIT_SUCCESS;
 }
 
+void decal_mat(int fd, int* pstatus){
+   (*pstatus) = lseek(fd, (off_t) -3 * sizeof(int), SEEK_CUR);
+   off_t cur_position = (off_t) (*pstatus);
+   (*pstatus) = lseek(fd, 0, SEEK_END);
+   off_t file_end = (off_t) (*pstatus);
+   char buffer[file_end - cur_position - 3 * sizeof(int)];
+   lseek(fd, cur_position + 3 * sizeof(int), SEEK_SET);
+   (*pstatus) = read(fd, &buffer, (file_end - cur_position - 3 * sizeof(int)));
+   lseek(fd, cur_position, SEEK_SET);
+   write(fd, &buffer, (file_end - cur_position - 3 * sizeof(int)));
+   ftruncate(fd, file_end - 3 * sizeof(int));
+   lseek(fd, cur_position, SEEK_SET);
+}
+
 int main(int argc, char* argv[]){
+   if(argc <= 2){
+      fprintf(stderr, "Usage: %s <filename> <options> [args]\n", argv[0]);
+      exit(EXIT_FAILURE);
+   }
+
    char* filename = argv[1];
+   int status;
    if(strcmp(argv[2], "--getwidth") == 0){
-	get_width(filename);
+	status = get_width(filename);
+        if(status < 0){
+           fprintf(stderr, "Error: %s code %d\n", argv[2], status);
+        }
+        return status;
    }
    if(strcmp(argv[2], "--getheight") == 0){
-	get_height(filename);
+	status = get_height(filename);
+        if(status < 0){
+           fprintf(stderr, "Error: %s code %d\n", argv[2], status);
+        }
+        return status;
    }
    if(strcmp(argv[2], "--getobjects") == 0){
-	get_objects(filename);
+	status = get_objects(filename);
+        if(status < 0){
+           fprintf(stderr, "Error: %s code %d\n", argv[2], status);
+        }
+        return status;
    }
    if(strcmp(argv[2], "--getinfo") == 0){
-	get_info(filename);
+	status = get_info(filename);
+        if(status < 0){
+           fprintf(stderr, "Error: %s code %d\n", argv[2], status);
+        }
+        return status;
    }
    if(strcmp(argv[2], "--setwidth") == 0){
-	set_width(filename, atoi(argv[3]));
+	status = set_width(filename, atoi(argv[3]));
+        if(status < 0){
+           fprintf(stderr, "Error: %s code %d\n", argv[2], status);
+        }
+        return status;
    }
    if(strcmp(argv[2], "--setheight") == 0){
-	set_height(filename, atoi(argv[3]));
+	status = set_height(filename, atoi(argv[3]));
+        if(status < 0){
+           fprintf(stderr, "Error: %s code %d\n", argv[2], status);
+        }
+        return status;
    }
    if(strcmp(argv[2], "--setobjects") == 0){
-	set_objects(filename, argc - 3, argv + 3);
+	status = set_objects(filename, argc - 3, argv + 3);
+        if(status < 0){
+           fprintf(stderr, "Error: %s code %d\n", argv[2], status);
+        }
+        return status;
    }
    if(strcmp(argv[2], "--pruneobjects") == 0){
-	prune_objects(filename);
+	status = prune_objects(filename);
+        if(status < 0){
+           fprintf(stderr, "Error: %s code %d\n", argv[2], status);
+        }
+        return status;
    }
+
+   fprintf(stderr, "Error: Invalid option\n");
+
    return EXIT_SUCCESS;
 }
