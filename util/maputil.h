@@ -19,16 +19,20 @@
 
 #define NB_PROPERTIES         5 //6
 
+//fonctions get
 int get_width(char* filename);
 int get_height(char* filename);
 int get_objects(char* filename);
 int get_info(char* filename);
 int get(char* filename, int mode);
 
+//fonctions set
 int set_width(char* filename, int value);
 int set_height(char* filename, int value);
 int set_objects(char* filename, int argc, char** objects_list);
 
+//fonctions remove
 int prune_objects(char* filename);
 
+//fonctions auxiliaires
 void decal_mat(int fd, int* pstatus);
