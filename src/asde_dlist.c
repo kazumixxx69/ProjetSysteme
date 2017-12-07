@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include "asde_dlist.h"
 
 struct DList{
@@ -48,7 +49,9 @@ asde_dlist_insert_after(DList L, DList p, data_type data){
 	new->data = data;
 	new->previous = p;
 	new->next = p->next;
-	(p->next)->previous = new;
+	if((p->next) != NULL){
+	  (p->next)->previous = new;
+	}
 	p->next = new;
 	return L;
 }
@@ -85,6 +88,12 @@ asde_dlist_delete_before(DList L, DList p){
 	(p->previous)->previous = NULL;
 	asde_dlist_free_link(p->previous);
 	p->previous = previous;
+	return L;
+}
+
+DList
+asde_dlist_modify_data(DList L, data_type data){
+	if(L!=NULL){L->data=data;}
 	return L;
 }
 

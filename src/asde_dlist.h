@@ -1,6 +1,7 @@
 #ifndef ASDE_DLIST_H
 #define ASDE_DLIST_H
-typedef int data_type;
+
+typedef unsigned long data_type;
 typedef struct DList *DList;
 
 // allocates space for one DList element -> fonction creerCellule(): liste d'objet;
@@ -26,6 +27,8 @@ extern DList asde_dlist_insert_before(DList L, DList p, data_type data);
 
 // -> fonction supprimerAvant(val L:liste d'objets, val p : liste d'objets): liste d'objet;
 extern DList asde_dlist_delete_before(DList L, DList p);
+
+extern DList asde_dlist_modify_data(DList L, data_type data);
 
 // gets next element in a DList ->  fonction suivant(val L:liste d'objet): liste d'objet; 
 extern  DList  asde_dlist_next(DList L);
